@@ -7,9 +7,9 @@ export default auth((req: NextRequest & { auth: unknown }) => {
     req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/register');
 
   if (isAuthPage) {
-    if (isLoggedIn) {
-      return Response.redirect(new URL('/', req.nextUrl));
-    }
+    // if (isLoggedIn) {
+    //   return Response.redirect(new URL('/', req.nextUrl));
+    // }
     return;
   }
 
