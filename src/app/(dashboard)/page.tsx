@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Globe, CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
   const userId = Number.parseInt(session.user.id);
 
   // Stats
