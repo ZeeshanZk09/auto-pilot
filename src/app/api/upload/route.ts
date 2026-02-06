@@ -25,11 +25,14 @@ export async function POST(req: Request) {
     const uploadDir = path.join(process.cwd(), 'public', 'upload');
     const filePath = path.join(uploadDir, fileName);
 
-    // Ensure directory exists
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    // Save file locally
-    await fs.writeFile(filePath, buffer);
+    // Save file locally (Try-catch to avoid failing on read-only filesystems like Vercel)
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(filePath, buffer);
+    } catch (fsError) {
+      console.warn('Filesystem is read-only or error writing file:', fsError);
+      // We continue since we have the buffer in memory
+    }
 
     // 2. Parse Excel
     const workbook = XLSX.read(buffer, { type: 'buffer' });

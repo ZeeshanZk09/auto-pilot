@@ -14,81 +14,116 @@ export default async function DashboardPage() {
   }
   const userId = Number.parseInt(session.user.id);
 
-  // Stats
-  const userWebsites = await db.query.websites.findMany({
-    where: eq(websites.userId, userId),
-    columns: { id: true },
-  });
-  const websiteIds = userWebsites.map((w) => w.id);
+  const result = await (async () => {
+    try {
+      // Stats
+      const userWebsites = await db.query.websites.findMany({
+        where: eq(websites.userId, userId),
+        columns: { id: true },
+      });
+      const websiteIds = userWebsites.map((w) => w.id);
 
-  const [totalArticlesCount] =
-    websiteIds.length > 0
-      ? await db
-          .select({ value: count() })
-          .from(articles)
-          .where(inArray(articles.websiteId, websiteIds))
-      : [{ value: 0 }];
+      const [totalArticlesCount] =
+        websiteIds.length > 0
+          ? await db
+              .select({ value: count() })
+              .from(articles)
+              .where(inArray(articles.websiteId, websiteIds))
+          : [{ value: 0 }];
 
-  const [publishedArticlesCount] =
-    websiteIds.length > 0
-      ? await db
-          .select({ value: count() })
-          .from(articles)
-          .where(and(inArray(articles.websiteId, websiteIds), eq(articles.status, 'published')))
-      : [{ value: 0 }];
+      const [publishedArticlesCount] =
+        websiteIds.length > 0
+          ? await db
+              .select({ value: count() })
+              .from(articles)
+              .where(and(inArray(articles.websiteId, websiteIds), eq(articles.status, 'published')))
+          : [{ value: 0 }];
 
-  const [pendingArticlesCount] =
-    websiteIds.length > 0
-      ? await db
-          .select({ value: count() })
-          .from(articles)
-          .where(and(inArray(articles.websiteId, websiteIds), eq(articles.status, 'pending')))
-      : [{ value: 0 }];
+      const [pendingArticlesCount] =
+        websiteIds.length > 0
+          ? await db
+              .select({ value: count() })
+              .from(articles)
+              .where(and(inArray(articles.websiteId, websiteIds), eq(articles.status, 'pending')))
+          : [{ value: 0 }];
 
-  const [websitesCount] = await db
-    .select({ value: count() })
-    .from(websites)
-    .where(eq(websites.userId, userId));
+      const [websitesCount] = await db
+        .select({ value: count() })
+        .from(websites)
+        .where(eq(websites.userId, userId));
 
-  // Recent Activity
-  const recentActivity = await db.query.activityLogs.findMany({
-    where: eq(activityLogs.userId, userId),
-    orderBy: (activityLogs, { desc }) => [desc(activityLogs.createdAt)],
-    limit: 5,
-  });
+      // Recent Activity
+      const recentActivity = await db.query.activityLogs.findMany({
+        where: eq(activityLogs.userId, userId),
+        orderBy: (activityLogs, { desc }) => [desc(activityLogs.createdAt)],
+        limit: 5,
+      });
 
-  // Recent Live Links
-  const liveLinks = await db.query.articles.findMany({
-    where: eq(articles.status, 'published'),
-    orderBy: (articles, { desc }) => [desc(articles.publishedAt)],
-    limit: 5,
-    with: {
-      website: true,
-    },
-  });
+      // Recent Live Links
+      const liveLinks = await db.query.articles.findMany({
+        where: eq(articles.status, 'published'),
+        orderBy: (articles, { desc }) => [desc(articles.publishedAt)],
+        limit: 5,
+        with: {
+          website: true,
+        },
+      });
+
+      return {
+        totalArticlesCount: totalArticlesCount.value,
+        publishedArticlesCount: publishedArticlesCount.value,
+        pendingArticlesCount: pendingArticlesCount.value,
+        websitesCount: websitesCount.value,
+        recentActivity,
+        liveLinks,
+        error: false,
+      };
+    } catch (error) {
+      console.error('Dashboard data fetch error:', error);
+      return { error: true };
+    }
+  })();
+
+  if (result.error || !result.liveLinks) {
+    return (
+      <div className='p-8 text-center'>
+        <h2 className='text-2xl font-bold text-destructive'>Error loading dashboard</h2>
+        <p className='text-muted-foreground mt-2'>Please check your database connection.</p>
+      </div>
+    );
+  }
+
+  const {
+    totalArticlesCount,
+    publishedArticlesCount,
+    pendingArticlesCount,
+    websitesCount,
+    recentActivity,
+    liveLinks,
+  } = result;
 
   const stats = [
     {
       title: 'Total Articles',
-      value: totalArticlesCount.value,
+      value: totalArticlesCount,
       icon: FileText,
       color: 'text-blue-500',
     },
     {
       title: 'Published',
-      value: publishedArticlesCount.value,
+      value: publishedArticlesCount,
       icon: CheckCircle,
       color: 'text-green-500',
     },
     {
       title: 'Pending',
-      value: pendingArticlesCount.value,
+      value: pendingArticlesCount,
       icon: Clock,
       color: 'text-amber-500',
     },
     {
       title: 'Active Websites',
-      value: websitesCount.value,
+      value: websitesCount,
       icon: Globe,
       color: 'text-purple-500',
     },

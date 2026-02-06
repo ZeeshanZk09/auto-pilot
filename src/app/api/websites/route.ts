@@ -5,15 +5,20 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
 
-  const data = await db.query.websites.findMany({
-    where: eq(websites.userId, Number.parseInt(session.user.id)),
-    orderBy: (websites, { desc }) => [desc(websites.createdAt)],
-  });
+    const data = await db.query.websites.findMany({
+      where: eq(websites.userId, Number.parseInt(session.user.id)),
+      orderBy: (websites, { desc }) => [desc(websites.createdAt)],
+    });
 
-  return NextResponse.json(data);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error fetching websites:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { articles } from '@/lib/schema';
-import { desc } from 'drizzle-orm';
+import { articles, websites } from '@/lib/schema';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { Globe, CheckCircle2, Clock, AlertCircle, ExternalLink } from 'lucide-react';
 import {
   Table,
@@ -12,14 +12,54 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { PublishButton } from '@/components/articles/publish-button';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function ArticlesPage() {
-  const articleList = await db.query.articles.findMany({
-    orderBy: [desc(articles.createdAt)],
-    with: {
-      website: true,
-    },
-  });
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
+  const userId = Number.parseInt(session.user.id);
+
+  const result = await (async () => {
+    try {
+      // Get user's website IDs to filter articles
+      const userWebsites = await db.query.websites.findMany({
+        where: eq(websites.userId, userId),
+        columns: { id: true },
+      });
+
+      const websiteIds = userWebsites.map((w) => w.id);
+
+      const items =
+        websiteIds.length > 0
+          ? await db.query.articles.findMany({
+              where: inArray(articles.websiteId, websiteIds),
+              orderBy: [desc(articles.createdAt)],
+              with: {
+                website: true,
+              },
+            })
+          : [];
+      return { items, error: false };
+    } catch (error) {
+      console.error('Failed to fetch articles:', error);
+      return { items: [], error: true };
+    }
+  })();
+
+  if (result.error) {
+    return (
+      <div className='p-8 text-center'>
+        <h2 className='text-2xl font-bold text-destructive'>Error loading articles</h2>
+        <p className='text-muted-foreground mt-2'>Please try again later.</p>
+      </div>
+    );
+  }
+
+  const articleList = result.items;
 
   return (
     <div className='space-y-6'>
@@ -91,7 +131,7 @@ export default async function ArticlesPage() {
                   )}
                 </TableCell>
                 <TableCell className='text-muted-foreground text-sm'>
-                  {new Date(article.createdAt || '').toLocaleDateString()}
+                  {article.createdAt ? new Date(article.createdAt).toLocaleDateString() : 'N/A'}
                 </TableCell>
                 <TableCell className='text-right'>
                   {article.status === 'pending' && article.websiteId && (

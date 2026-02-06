@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { articles } from '@/lib/schema';
-import { eq, desc } from 'drizzle-orm';
+import { articles, websites } from '@/lib/schema';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import { Globe, ExternalLink, Calendar } from 'lucide-react';
 import {
   Table,
@@ -10,15 +10,54 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function LiveLinksPage() {
-  const publishedArticles = await db.query.articles.findMany({
-    where: eq(articles.status, 'published'),
-    orderBy: [desc(articles.publishedAt)],
-    with: {
-      website: true,
-    },
-  });
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
+  const userId = Number.parseInt(session.user.id);
+
+  const result = await (async () => {
+    try {
+      // Get user's website IDs to filter articles
+      const userWebsites = await db.query.websites.findMany({
+        where: eq(websites.userId, userId),
+        columns: { id: true },
+      });
+
+      const websiteIds = userWebsites.map((w) => w.id);
+
+      const items =
+        websiteIds.length > 0
+          ? await db.query.articles.findMany({
+              where: and(eq(articles.status, 'published'), inArray(articles.websiteId, websiteIds)),
+              orderBy: [desc(articles.publishedAt)],
+              with: {
+                website: true,
+              },
+            })
+          : [];
+      return { items, error: false };
+    } catch (error) {
+      console.error('Failed to fetch live links:', error);
+      return { items: [], error: true };
+    }
+  })();
+
+  if (result.error) {
+    return (
+      <div className='p-8 text-center'>
+        <h2 className='text-2xl font-bold text-destructive'>Error loading live links</h2>
+        <p className='text-muted-foreground mt-2'>Please try again later.</p>
+      </div>
+    );
+  }
+
+  const publishedArticles = result.items;
 
   return (
     <div className='space-y-6'>
