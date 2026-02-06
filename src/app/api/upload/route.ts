@@ -3,8 +3,9 @@ import { articles, uploadBatches, websites, activityLogs } from '@/lib/schema';
 import { auth } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import axios from 'axios';
 import * as XLSX from 'xlsx';
+import path from 'path';
+import fs from 'fs/promises';
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -12,11 +13,23 @@ export async function POST(req: Request) {
   const userId = Number.parseInt(session.user.id);
 
   try {
-    const { url, name, size } = await req.json();
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
 
-    // 1. Download file
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    const buffer = Buffer.from(response.data);
+    if (!file) {
+      return new NextResponse('No file uploaded', { status: 400 });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileName = `${Date.now()}-${file.name}`;
+    const uploadDir = path.join(process.cwd(), 'public', 'upload');
+    const filePath = path.join(uploadDir, fileName);
+
+    // Ensure directory exists
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    // Save file locally
+    await fs.writeFile(filePath, buffer);
 
     // 2. Parse Excel
     const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -34,8 +47,8 @@ export async function POST(req: Request) {
     const [batch] = await db
       .insert(uploadBatches)
       .values({
-        fileName: name,
-        fileSize: size,
+        fileName: file.name,
+        fileSize: file.size,
         totalArticles: data.length,
         userId: userId,
         status: 'completed',
@@ -67,13 +80,17 @@ export async function POST(req: Request) {
 
     await db.insert(activityLogs).values({
       type: 'upload',
-      message: `Uploaded batch: ${name} (${data.length} articles)`,
+      message: `Uploaded batch: ${file.name} (${data.length} articles)`,
       userId: userId,
     });
 
-    return NextResponse.json({ success: true, batchId: batch.id });
+    return NextResponse.json({
+      success: true,
+      batchId: batch.id,
+      url: `/upload/${fileName}`,
+    });
   } catch (error) {
-    console.error('Excel processing error:', error);
+    console.error('File upload error:', error);
     return new NextResponse('Failed to process file', { status: 500 });
   }
 }
