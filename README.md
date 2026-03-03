@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SEO PBN Autopilot
+
+> Automated article spinning and bulk publishing system for WordPress networks.
+
+SEO PBN Autopilot is a Next.js web application that streamlines content management across multiple WordPress sites. Upload articles in bulk via Excel, let the system spin (paraphrase) the content to produce unique variations, and publish them directly to your WordPress properties — all from a single dashboard.
+
+## Features
+
+- **Bulk Upload** — Import articles from `.xlsx` or `.csv` files (columns: Title, Content, Keywords, Website).
+- **Article Spinning** — Automatically rewrites content using a synonym engine to generate unique variations.
+- **WordPress Publishing** — Publishes spun articles to configured WordPress sites via the REST API.
+- **Website Manager** — Add and manage multiple WordPress sites with credentials stored securely.
+- **Dashboard** — Monitor published/pending article counts, recent activity, and live links at a glance.
+- **Authentication** — Secure user accounts with NextAuth.js session management.
+
+## Tech Stack
+
+- [Next.js 15](https://nextjs.org) (App Router)
+- [Drizzle ORM](https://orm.drizzle.team) + SQLite
+- [shadcn/ui](https://ui.shadcn.com) component library
+- [NextAuth.js](https://next-auth.js.org) for authentication
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm / yarn / pnpm / bun
+
+### Installation
+
+```bash
+npm install
+```
+
+### Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```env
+AUTH_SECRET=your_nextauth_secret
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Register / Login** — Create an account or sign in.
+2. **Add Websites** — Go to *Websites* and add your WordPress sites with URL, username, and application password.
+3. **Upload Articles** — Go to *Upload*, select an Excel file with the required columns (Title, Content, Keywords, Website), and submit.
+4. **Publish** — Open the *Articles* queue, review pending articles, and click *Publish* to spin and post them to WordPress.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy is via the [Vercel Platform](https://vercel.com/new).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for full details.
